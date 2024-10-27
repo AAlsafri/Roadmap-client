@@ -1,5 +1,7 @@
+"use client";
+
 import { createContext, useContext, useState, useEffect } from "react";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 
 const AuthContext = createContext();
 
@@ -12,14 +14,40 @@ export function AuthProvider({ children }) {
     const savedToken = localStorage.getItem("token");
     if (savedToken) {
       setToken(savedToken);
-      setUser({ name: "John Doe" });
+      fetchUserData(savedToken);
     }
   }, []);
 
-  const login = (token) => {
-    setToken(token);
-    localStorage.setItem("token", token);
-    setUser({ name: "John Doe" });
+  const fetchUserData = async (token) => {};
+
+  const login = async (username, password) => {
+    const response = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      setToken(data.token);
+      localStorage.setItem("token", data.token);
+      fetchUserData(data.token);
+      router.push("/dashboard");
+    }
+  };
+
+  const register = async (username, password) => {
+    const response = await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      setToken(data.token);
+      localStorage.setItem("token", data.token);
+      fetchUserData(data.token);
+      router.push("/dashboard");
+    }
   };
 
   const logout = () => {
@@ -30,7 +58,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

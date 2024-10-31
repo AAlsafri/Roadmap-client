@@ -6,3 +6,12 @@ export interface UserProfile {
   last_name: string;
   is_staff: boolean;
 }
+
+export interface DeveloperProfile {
+  user: UserProfile;
+  is_developer: boolean;
+  job_title: string;
+  years_of_experience: number;
+  skills: string[];
+  available_date: string | null;
+}

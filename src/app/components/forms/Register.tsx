@@ -10,14 +10,28 @@ export default function Register() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isDeveloper, setIsDeveloper] = useState<"yes" | "no" | null>(null); // Toggle for developer status
+  const [jobTitle, setJobTitle] = useState(""); // State for job title
+  const [yearsOfExperience, setYearsOfExperience] = useState<number | "">(""); // State for years of experience
+
   const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Prepare developer profile data only if the user selects "yes"
+    const developerProfile =
+      isDeveloper === "yes"
+        ? {
+            is_developer: true,
+            job_title: jobTitle,
+            years_of_experience: yearsOfExperience,
+          }
+        : null;
+
     try {
-      const response = await fetch("http://localhost:8000/register", {
+      const response = await fetch("http://localhost:8000/register/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -28,6 +42,7 @@ export default function Register() {
           last_name: lastName,
           email,
           password,
+          developer_profile: developerProfile, // Send developer profile data if applicable
         }),
       });
 
@@ -55,6 +70,7 @@ export default function Register() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           />
           <input
             type="text"
@@ -62,6 +78,7 @@ export default function Register() {
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           />
           <input
             type="text"
@@ -69,6 +86,7 @@ export default function Register() {
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           />
           <input
             type="email"
@@ -76,6 +94,7 @@ export default function Register() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           />
           <input
             type="password"
@@ -83,7 +102,60 @@ export default function Register() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           />
+
+          {/* Developer Question */}
+          <div className="mb-4">
+            <label className="block font-medium text-gray-700 mb-1">
+              Are you a developer?
+            </label>
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="yes"
+                  checked={isDeveloper === "yes"}
+                  onChange={() => setIsDeveloper("yes")}
+                  className="mr-2"
+                />
+                Yes
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  value="no"
+                  checked={isDeveloper === "no"}
+                  onChange={() => setIsDeveloper("no")}
+                  className="mr-2"
+                />
+                No
+              </label>
+            </div>
+          </div>
+
+          {/* Conditional Fields for Developer */}
+          {isDeveloper === "yes" && (
+            <>
+              <input
+                type="text"
+                placeholder="Job Title"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <input
+                type="number"
+                placeholder="Years of Experience"
+                value={yearsOfExperience}
+                onChange={(e) => setYearsOfExperience(Number(e.target.value))}
+                className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </>
+          )}
+
           <button
             type="submit"
             className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"

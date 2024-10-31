@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Project } from "@/types/project.types";
 import { UserProfile } from "@/types/user.types";
+import { Milestone } from "@/types/milestone.types";
 
 interface EditProjectFormProps {
   project: Project;
@@ -20,6 +21,9 @@ export default function EditProjectForm({
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [assignedUserIds, setAssignedUserIds] = useState<number[]>(
     project.assigned_users.map((user) => user.id)
+  );
+  const [milestones, setMilestones] = useState<Milestone[]>(
+    project.milestones || []
   );
 
   useEffect(() => {
@@ -47,7 +51,8 @@ export default function EditProjectForm({
 
   const handleSave = async () => {
     try {
-      const response = await fetch(
+      // Step 1: Update the project details
+      const projectResponse = await fetch(
         `http://localhost:8000/projects/${project.id}`,
         {
           method: "PUT",
@@ -63,11 +68,47 @@ export default function EditProjectForm({
         }
       );
 
-      if (response.ok) {
-        onSave(); // Refresh the project list
-      } else {
+      if (!projectResponse.ok) {
         console.error("Failed to update project");
+        return;
       }
+
+      // Step 2: Update existing milestones and add new milestones
+      for (const milestone of milestones) {
+        if (milestone.id) {
+          // Update existing milestone
+          await fetch(`http://localhost:8000/milestones/${milestone.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({
+              name: milestone.name,
+              due_date: milestone.due_date,
+              status: milestone.status,
+              project: project.id,
+            }),
+          });
+        } else {
+          // Create new milestone
+          await fetch("http://localhost:8000/milestones", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({
+              name: milestone.name,
+              due_date: milestone.due_date,
+              status: milestone.status,
+              project: project.id,
+            }),
+          });
+        }
+      }
+
+      onSave(); // Refresh the project list
     } catch (error) {
       console.error("Error updating project:", error);
     }
@@ -80,6 +121,16 @@ export default function EditProjectForm({
           ? prevUserIds.filter((id) => id !== userId) // Unassign user if already assigned
           : [...prevUserIds, userId] // Assign user if not yet assigned
     );
+  };
+
+  const handleMilestoneChange = (
+    index: number,
+    field: keyof Milestone,
+    value: string
+  ) => {
+    const updatedMilestones = [...milestones];
+    updatedMilestones[index] = { ...updatedMilestones[index], [field]: value };
+    setMilestones(updatedMilestones);
   };
 
   return (
@@ -102,6 +153,49 @@ export default function EditProjectForm({
           className="w-full p-2 border border-gray-300 rounded"
         />
       </div>
+
+      {/* Milestone Editing Section */}
+      <div className="mb-4">
+        <h3 className="font-semibold mb-2">Milestones</h3>
+        {milestones.map((milestone, index) => (
+          <div
+            key={milestone.id}
+            className="mb-2 p-2 border border-gray-200 rounded"
+          >
+            <label className="block font-medium">Milestone Name</label>
+            <input
+              type="text"
+              value={milestone.name}
+              onChange={(e) =>
+                handleMilestoneChange(index, "name", e.target.value)
+              }
+              className="w-full p-2 border border-gray-300 rounded mb-2"
+            />
+            <label className="block font-medium">Due Date</label>
+            <input
+              type="date"
+              value={milestone.due_date}
+              onChange={(e) =>
+                handleMilestoneChange(index, "due_date", e.target.value)
+              }
+              className="w-full p-2 border border-gray-300 rounded mb-2"
+            />
+            <label className="block font-medium">Status</label>
+            <select
+              value={milestone.status}
+              onChange={(e) =>
+                handleMilestoneChange(index, "status", e.target.value)
+              }
+              className="w-full p-2 border border-gray-300 rounded"
+            >
+              <option value="open">Open</option>
+              <option value="completed">Completed</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+        ))}
+      </div>
+
       <div className="mb-4">
         <label className="block font-medium">Assign Users</label>
         <div className="grid grid-cols-2 gap-2">

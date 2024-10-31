@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Project } from "@/types/project.types";
+import { Milestone } from "@/types/milestone.types";
 
 interface User {
   id: number;
@@ -17,6 +18,7 @@ const AddProjectForm: React.FC<AddProjectFormProps> = ({ onProjectAdded }) => {
   const [description, setDescription] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [assignedUserIds, setAssignedUserIds] = useState<number[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -42,7 +44,8 @@ const AddProjectForm: React.FC<AddProjectFormProps> = ({ onProjectAdded }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:8000/projects", {
+      // Step 1: Create the project
+      const projectResponse = await fetch("http://localhost:8000/projects", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -55,12 +58,32 @@ const AddProjectForm: React.FC<AddProjectFormProps> = ({ onProjectAdded }) => {
         }),
       });
 
-      if (response.ok) {
-        const newProject: Project = await response.json();
+      if (projectResponse.ok) {
+        const newProject: Project = await projectResponse.json();
+
+        // Step 2: Add milestones for the new project, if any
+        for (const milestone of milestones) {
+          await fetch("http://localhost:8000/milestones", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Token ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({
+              name: milestone.name,
+              due_date: milestone.due_date,
+              status: milestone.status,
+              project: newProject.id, // Use the newly created project ID
+            }),
+          });
+        }
+
+        // Step 3: Call the onProjectAdded callback and reset form
         onProjectAdded(newProject);
         setName("");
         setDescription("");
         setAssignedUserIds([]);
+        setMilestones([]);
       } else {
         alert("Failed to create project");
       }
@@ -70,12 +93,28 @@ const AddProjectForm: React.FC<AddProjectFormProps> = ({ onProjectAdded }) => {
   };
 
   const handleUserCheckboxChange = (userId: number) => {
-    setAssignedUserIds(
-      (prev) =>
-        prev.includes(userId)
-          ? prev.filter((id) => id !== userId) // Unassign user
-          : [...prev, userId] // Assign user
+    setAssignedUserIds((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
     );
+  };
+
+  const handleAddMilestone = () => {
+    setMilestones([
+      ...milestones,
+      { id: Date.now(), name: "", due_date: "", status: "open", project_id: 0 },
+    ]);
+  };
+
+  const handleMilestoneChange = (
+    index: number,
+    field: keyof Milestone,
+    value: string
+  ) => {
+    const updatedMilestones = [...milestones];
+    updatedMilestones[index] = { ...updatedMilestones[index], [field]: value };
+    setMilestones(updatedMilestones);
   };
 
   return (
@@ -117,27 +156,53 @@ const AddProjectForm: React.FC<AddProjectFormProps> = ({ onProjectAdded }) => {
             ))}
           </div>
 
-          {/* Display selected users */}
+          {/* Milestone Section */}
           <div className="mt-4">
-            <h3 className="font-semibold text-gray-700">Selected Users:</h3>
-            {assignedUserIds.length > 0 ? (
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                {users
-                  .filter((user) => assignedUserIds.includes(user.id))
-                  .map((user) => (
-                    <li key={user.id} className="text-gray-800">
-                      {user.username}
-                    </li>
-                  ))}
-              </ul>
-            ) : (
-              <p className="text-gray-500">No users selected</p>
-            )}
+            <h3 className="font-semibold text-gray-700">Milestones</h3>
+            {milestones.map((milestone, index) => (
+              <div key={milestone.id} className="border p-2 mt-2 rounded">
+                <input
+                  type="text"
+                  placeholder="Milestone Name"
+                  value={milestone.name}
+                  onChange={(e) =>
+                    handleMilestoneChange(index, "name", e.target.value)
+                  }
+                  className="w-full p-2 mb-2 border border-gray-300 rounded"
+                />
+                <input
+                  type="date"
+                  value={milestone.due_date}
+                  onChange={(e) =>
+                    handleMilestoneChange(index, "due_date", e.target.value)
+                  }
+                  className="w-full p-2 mb-2 border border-gray-300 rounded"
+                />
+                <select
+                  value={milestone.status}
+                  onChange={(e) =>
+                    handleMilestoneChange(index, "status", e.target.value)
+                  }
+                  className="w-full p-2 border border-gray-300 rounded"
+                >
+                  <option value="open">Open</option>
+                  <option value="completed">Completed</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={handleAddMilestone}
+              className="mt-2 p-2 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              Add Milestone
+            </button>
           </div>
 
           <button
             type="submit"
-            className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600 mt-4"
           >
             Add Project
           </button>

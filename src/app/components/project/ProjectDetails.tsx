@@ -6,6 +6,8 @@ import { Goal } from "@/types/goal.types";
 import { Milestone } from "@/types/milestone.types";
 import MilestoneComponent from "./Milestone";
 import GoalComponent from "./Goal";
+import MilestoneProgress from "./MilestoneProgress";
+import { useAuth } from "@/context/AuthContext";
 
 interface ProjectDetailsProps {
   project: Project & {
@@ -19,9 +21,14 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project }) => {
     project.milestones || []
   );
   const [goals, setGoals] = useState<Goal[]>(project.goals || []);
+  const { user: currentUser } = useAuth(); // Get current user from context
+
+  const isProjectOwner = currentUser?.id === project.owner.id;
+  const isAssignedDeveloper = project.assigned_users.some(
+    (user) => user.id === currentUser?.id
+  );
 
   useEffect(() => {
-    // Fetch milestones and goals if they are not already provided
     if (!milestones.length || !goals.length) {
       fetchProjectDetails();
     }
@@ -40,15 +47,36 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project }) => {
     }
   };
 
+  const onStatusChange = (
+    milestoneId: number,
+    newStatus: "open" | "completed" | "pending"
+  ) => {
+    setMilestones((prevMilestones) =>
+      prevMilestones.map((milestone) =>
+        milestone.id === milestoneId
+          ? { ...milestone, status: newStatus }
+          : milestone
+      )
+    );
+  };
+
   return (
     <div className="p-4 border border-gray-300 rounded-md">
       <h2 className="text-2xl font-semibold mb-4">{project.name}</h2>
       <p>{project.description}</p>
 
+      {/* Only show Milestone Progress for Project Owner */}
+      {isProjectOwner && <MilestoneProgress milestones={milestones} />}
+
       <section className="mt-6">
         <h3 className="text-lg font-semibold">Milestones</h3>
         {milestones.map((milestone) => (
-          <MilestoneComponent key={milestone.id} milestone={milestone} />
+          <MilestoneComponent
+            key={milestone.id}
+            milestone={milestone}
+            onStatusChange={onStatusChange}
+            isEditable={isAssignedDeveloper && !isProjectOwner}
+          />
         ))}
       </section>
 

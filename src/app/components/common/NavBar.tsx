@@ -20,7 +20,6 @@ export default function Navbar() {
           Roadmap
         </Link>
         <div className="flex space-x-4">
-          {/* Show links for authenticated users */}
           {user ? (
             <>
               <Link href="/dashboard" className="hover:text-gray-300">
@@ -38,6 +37,9 @@ export default function Navbar() {
               <Link href="/developers" className="hover:text-gray-300">
                 Developers
               </Link>
+              <Link href="/work-request" className="hover:text-gray-300">
+                Work Request
+              </Link>
               <button
                 onClick={handleLogout}
                 className="hover:text-gray-300 focus:outline-none"
@@ -46,7 +48,6 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            // Show login/register links for unauthenticated users
             <>
               <Link href="/login" className="hover:text-gray-300">
                 Login

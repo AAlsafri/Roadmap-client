@@ -17,7 +17,10 @@ interface ExpandedProject extends Project {
 export default function Dashboard() {
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
-  const [projects, setProjects] = useState<ExpandedProject[]>([]);
+  const [createdProjects, setCreatedProjects] = useState<ExpandedProject[]>([]);
+  const [assignedProjects, setAssignedProjects] = useState<ExpandedProject[]>(
+    []
+  );
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
@@ -39,10 +42,32 @@ export default function Dashboard() {
       });
       if (response.ok) {
         const data: Project[] = await response.json();
-        setProjects(
-          data.map((project) => ({
+
+        // Separate projects by created and assigned
+        const userCreatedProjects = data.filter(
+          (project) => project.owner.id === user?.id
+        );
+        const userAssignedProjects = data.filter(
+          (project) =>
+            project.assigned_users.some(
+              (assignedUser) => assignedUser.id === user?.id
+            ) && project.owner.id !== user?.id
+        );
+
+        setCreatedProjects(
+          userCreatedProjects.map((project) => ({
             ...project,
             assigned_users: project.assigned_users || [],
+            milestones: project.milestones || [],
+            isExpanded: false,
+          }))
+        );
+
+        setAssignedProjects(
+          userAssignedProjects.map((project) => ({
+            ...project,
+            assigned_users: project.assigned_users || [],
+            milestones: project.milestones || [],
             isExpanded: false,
           }))
         );
@@ -81,7 +106,7 @@ export default function Dashboard() {
   };
 
   const handleEditToggle = (projectId: number) => {
-    setProjects((prevProjects) =>
+    setCreatedProjects((prevProjects) =>
       prevProjects.map((project) =>
         project.id === projectId
           ? { ...project, isEditing: !project.isEditing }
@@ -90,19 +115,26 @@ export default function Dashboard() {
     );
   };
 
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
-  };
-
   const toggleProjectExpand = (projectId: number) => {
-    setProjects((prevProjects) =>
+    setCreatedProjects((prevProjects) =>
       prevProjects.map((project) =>
         project.id === projectId
           ? { ...project, isExpanded: !project.isExpanded }
           : project
       )
     );
+    setAssignedProjects((prevProjects) =>
+      prevProjects.map((project) =>
+        project.id === projectId
+          ? { ...project, isExpanded: !project.isExpanded }
+          : project
+      )
+    );
+  };
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
   };
 
   return (
@@ -137,9 +169,10 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Section for Projects Created by the User */}
           <h2 className="text-2xl font-semibold mt-8">Your Projects</h2>
           <ul className="space-y-4">
-            {projects.map((project) => (
+            {createdProjects.map((project) => (
               <li
                 key={project.id}
                 className="p-4 bg-gray-100 border border-gray-300 rounded-lg"
@@ -170,11 +203,30 @@ export default function Dashboard() {
                       )}
                     </ul>
 
+                    {/* Milestones Section */}
+                    <h3 className="text-md font-semibold mt-4">Milestones:</h3>
+                    <ul className="list-disc list-inside space-y-1">
+                      {project.milestones.length > 0 ? (
+                        project.milestones.map((milestone) => (
+                          <li key={milestone.id}>
+                            <span className="font-semibold">
+                              {milestone.name}
+                            </span>{" "}
+                            - Due: {milestone.due_date} - Status:{" "}
+                            {milestone.status}
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-gray-500">No milestones added</li>
+                      )}
+                    </ul>
+
+                    {/* Edit and Delete Buttons */}
                     {project.isEditing ? (
                       <EditProjectForm
                         project={project}
                         onCancel={() => handleEditToggle(project.id)}
-                        onSave={fetchProjects} // Refresh projects after saving
+                        onSave={fetchProjects}
                       />
                     ) : (
                       <button
@@ -197,6 +249,63 @@ export default function Dashboard() {
                     >
                       Delete Project
                     </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          {/* Section for Projects Assigned to the User */}
+          <h2 className="text-2xl font-semibold mt-8">Assigned Projects</h2>
+          <ul className="space-y-4">
+            {assignedProjects.map((project) => (
+              <li
+                key={project.id}
+                className="p-4 bg-gray-100 border border-gray-300 rounded-lg"
+              >
+                <div
+                  className="flex justify-between items-center cursor-pointer"
+                  onClick={() => toggleProjectExpand(project.id)}
+                >
+                  <p className="text-lg font-medium">{project.name}</p>
+                  <span className="text-sm text-gray-600">
+                    {project.assigned_users.length || 0} Users Assigned
+                  </span>
+                </div>
+                {project.isExpanded && (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-gray-700">{project.description}</p>
+                    <h3 className="text-md font-semibold">Assigned Users:</h3>
+                    <ul className="list-disc list-inside space-y-1">
+                      {project.assigned_users.length > 0 ? (
+                        project.assigned_users.map((assignedUser) => (
+                          <li key={assignedUser.id}>
+                            {assignedUser.first_name} {assignedUser.last_name} (
+                            {assignedUser.username})
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-gray-500">No users assigned</li>
+                      )}
+                    </ul>
+
+                    {/* Milestones Section */}
+                    <h3 className="text-md font-semibold mt-4">Milestones:</h3>
+                    <ul className="list-disc list-inside space-y-1">
+                      {project.milestones.length > 0 ? (
+                        project.milestones.map((milestone) => (
+                          <li key={milestone.id}>
+                            <span className="font-semibold">
+                              {milestone.name}
+                            </span>{" "}
+                            - Due: {milestone.due_date} - Status:{" "}
+                            {milestone.status}
+                          </li>
+                        ))
+                      ) : (
+                        <li className="text-gray-500">No milestones added</li>
+                      )}
+                    </ul>
                   </div>
                 )}
               </li>

@@ -5,3 +5,12 @@ export interface Milestone {
   status: "open" | "completed" | "pending";
   project_id: number;
 }
+
+export interface MilestoneProps {
+  milestone: Milestone;
+  onStatusChange: (
+    milestoneId: number,
+    newStatus: "open" | "completed" | "pending"
+  ) => void;
+  isEditable: boolean;
+}

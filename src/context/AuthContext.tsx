@@ -38,12 +38,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setUser(JSON.parse(storedUser));
         setIsLoading(false);
       } else {
-        fetchUserProfile(token); // Fetch profile if not in localStorage
+        fetchUserProfile(token);
       }
     } else {
       setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    const currentPath =
+      typeof window !== "undefined" ? window.location.pathname : "/";
+
+    if (isAuthenticated && user && currentPath === "/") {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, user, router]);
 
   const fetchUserProfile = async (token: string) => {
     try {
@@ -66,11 +75,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const login = async (token: string, userId: number) => {
+  const login = (token: string, userId: number) => {
     localStorage.setItem("token", token);
     setIsAuthenticated(true);
     fetchUserProfile(token);
-    router.push("/dashboard");
   };
 
   const logout = () => {
